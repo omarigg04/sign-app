@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
 
-  // Configuración vacía para Turbopack (silencia el warning)
+  // Configuración para Turbopack (dejarlo vacío - react-pdf debería funcionar sin aliases)
   turbopack: {},
 
   // Configuración para Webpack cuando se usa --webpack
