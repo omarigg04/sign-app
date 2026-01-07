@@ -25,6 +25,7 @@ export function SignPageClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [limitInfo, setLimitInfo] = useState<{ canSign: boolean; remaining: number; plan: string } | null>(null);
+  const [pdfScale, setPdfScale] = useState(1); // Zoom level for PDF viewer
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -122,6 +123,18 @@ export function SignPageClient() {
     });
   };
 
+  const handleZoomIn = () => {
+    setPdfScale(prev => Math.min(prev + 0.25, 3)); // Max 300%
+  };
+
+  const handleZoomOut = () => {
+    setPdfScale(prev => Math.max(prev - 0.25, 0.5)); // Min 50%
+  };
+
+  const handleResetZoom = () => {
+    setPdfScale(1); // Reset to 100%
+  };
+
   const handleExportPDF = async () => {
     if (!pdfFile) {
       alert('Por favor, carga un PDF primero');
@@ -164,21 +177,77 @@ export function SignPageClient() {
 
       // Calculate the scale ratio between displayed PDF and actual PDF
       let adjustedPosition = signaturePosition;
-      if (pdfDimensions && pdfContainerRef.current) {
-        const displayedPdfWidth = Math.min(window.innerWidth - 500, 1000);
-        const scaleRatio = pdfDimensions.width / displayedPdfWidth;
+      let adjustedSignatureSize = { width: 150 * signatureScale, height: 150 * signatureScale }; // Default
 
+      // Get the actual displayed signature dimensions from the DOM
+      const signatureElement = document.querySelector('[alt="Signature"]') as HTMLImageElement;
+      let displayedWidth = 150 * signatureScale;
+      let displayedHeight = 150 * signatureScale;
+
+      if (signatureElement) {
+        // Get the natural dimensions of the image
+        const imgWidth = signatureElement.naturalWidth || 150;
+        const imgHeight = signatureElement.naturalHeight || 150;
+        const aspectRatio = imgHeight / imgWidth;
+
+        // Calculate displayed dimensions (150px base width * scale * aspect ratio)
+        displayedWidth = 150 * signatureScale;
+        displayedHeight = displayedWidth * aspectRatio;
+
+        console.log('Signature image info:', {
+          naturalWidth: imgWidth,
+          naturalHeight: imgHeight,
+          aspectRatio,
+          displayedWidth,
+          displayedHeight,
+          scale: signatureScale
+        });
+      }
+
+      if (pdfDimensions && pdfContainerRef.current) {
+        // Get the ACTUAL visible PDF dimensions from the canvas element
+        const pdfCanvas = pdfContainerRef.current.querySelector('canvas');
+        if (!pdfCanvas) {
+          console.error('Canvas not found');
+          return;
+        }
+
+        const canvasRect = pdfCanvas.getBoundingClientRect();
+        const containerRect = pdfContainerRef.current.getBoundingClientRect();
+
+        const actualDisplayedWidth = canvasRect.width;
+        const actualDisplayedHeight = canvasRect.height;
+
+        // Calculate offset between container and canvas (in case there's padding/margin)
+        const offsetX = canvasRect.left - containerRect.left;
+        const offsetY = canvasRect.top - containerRect.top;
+
+        const scaleRatio = pdfDimensions.width / actualDisplayedWidth;
+
+        // Convert position to PDF coordinates (adjust for any offset first)
         adjustedPosition = {
-          x: signaturePosition.x * scaleRatio,
-          y: signaturePosition.y * scaleRatio
+          x: (signaturePosition.x - offsetX) * scaleRatio,
+          y: (signaturePosition.y - offsetY) * scaleRatio
         };
 
-        console.log('Position conversion:', {
-          original: signaturePosition,
-          adjusted: adjustedPosition,
+        // Convert signature size to PDF coordinates
+        adjustedSignatureSize = {
+          width: displayedWidth * scaleRatio,
+          height: displayedHeight * scaleRatio
+        };
+
+        console.log('Position and size conversion:', {
+          originalPosition: signaturePosition,
+          adjustedPosition,
+          displayedSize: { width: displayedWidth, height: displayedHeight },
+          adjustedSize: adjustedSignatureSize,
           scaleRatio,
-          displayedPdfWidth,
-          realPdfWidth: pdfDimensions.width
+          actualDisplayedWidth,
+          actualDisplayedHeight,
+          offset: { x: offsetX, y: offsetY },
+          canvasRect: { left: canvasRect.left, top: canvasRect.top, width: canvasRect.width, height: canvasRect.height },
+          containerRect: { left: containerRect.left, top: containerRect.top, width: containerRect.width, height: containerRect.height },
+          realPdfDimensions: pdfDimensions
         });
       }
 
@@ -187,7 +256,7 @@ export function SignPageClient() {
         pdfBytes,
         signatureImage,
         adjustedPosition,
-        signatureScale,
+        adjustedSignatureSize,
         pageNumber - 1 // Convert to 0-indexed
       );
 
@@ -343,44 +412,83 @@ export function SignPageClient() {
                 </p>
               )}
             </div>
-            {pdfFile && numPages && (
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => changePage(-1)}
-                  disabled={pageNumber <= 1}
-                  variant="outline"
-                  size="sm"
-                >
-                  Anterior
-                </Button>
-                <Button
-                  onClick={() => changePage(1)}
-                  disabled={pageNumber >= numPages}
-                  variant="outline"
-                  size="sm"
-                >
-                  Siguiente
-                </Button>
+            {pdfFile && (
+              <div className="flex items-center gap-4">
+                {/* Zoom controls */}
+                <div className="flex items-center gap-2 border-r pr-4">
+                  <Button
+                    onClick={handleZoomOut}
+                    disabled={pdfScale <= 0.5}
+                    variant="outline"
+                    size="sm"
+                    title="Reducir zoom"
+                  >
+                    -
+                  </Button>
+                  <span className="text-sm font-medium min-w-[4rem] text-center">
+                    {Math.round(pdfScale * 100)}%
+                  </span>
+                  <Button
+                    onClick={handleZoomIn}
+                    disabled={pdfScale >= 3}
+                    variant="outline"
+                    size="sm"
+                    title="Aumentar zoom"
+                  >
+                    +
+                  </Button>
+                  <Button
+                    onClick={handleResetZoom}
+                    variant="outline"
+                    size="sm"
+                    title="Restablecer zoom"
+                  >
+                    100%
+                  </Button>
+                </div>
+
+                {/* Page navigation */}
+                {numPages && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => changePage(-1)}
+                      disabled={pageNumber <= 1}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      onClick={() => changePage(1)}
+                      disabled={pageNumber >= numPages}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-gray-100 p-6 flex items-center justify-center">
-          {pdfFile ? (
-            <div className="relative inline-block" ref={pdfContainerRef}>
-              <Document
-                file={pdfFile}
-                onLoadSuccess={onDocumentLoadSuccess}
-                className="shadow-2xl"
-              >
-                <Page
-                  pageNumber={pageNumber}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                  width={Math.min(window.innerWidth - 500, 1000)}
-                />
-              </Document>
+        <div className="flex-1 overflow-auto bg-gray-100 p-6">
+          <div className="min-h-full flex items-start justify-center">
+            {pdfFile ? (
+              <div className="relative inline-block" ref={pdfContainerRef}>
+                <Document
+                  file={pdfFile}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  className="shadow-2xl"
+                >
+                  <Page
+                    pageNumber={pageNumber}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                    width={Math.min(window.innerWidth - 500, 1000) * pdfScale}
+                  />
+                </Document>
 
               {/* Draggable Signature Overlay */}
               {isPlacingSignature && signatureImage && (
@@ -398,14 +506,15 @@ export function SignPageClient() {
                   </div>
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="text-center p-12 text-gray-400">
-              <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No hay PDF cargado</p>
-              <p className="text-sm">Selecciona un PDF desde el sidebar para comenzar</p>
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="text-center p-12 text-gray-400">
+                <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">No hay PDF cargado</p>
+                <p className="text-sm">Selecciona un PDF desde el sidebar para comenzar</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

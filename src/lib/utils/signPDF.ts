@@ -5,8 +5,8 @@ import { saveAs } from 'file-saver';
  * Signs a PDF with a signature image at specific coordinates
  * @param pdfBytes - The original PDF as ArrayBuffer
  * @param signatureImage - The signature as a data URL
- * @param position - The position {x, y} to place the signature
- * @param scale - The scale factor for the signature
+ * @param position - The position {x, y} to place the signature (in PDF coordinates)
+ * @param signatureSize - Width and height of the signature as it should appear in PDF (in PDF points)
  * @param pageNumber - The page number (0-indexed) to place the signature
  * @returns Promise<Uint8Array> - The signed PDF as Uint8Array
  */
@@ -14,11 +14,11 @@ export async function signPDF(
   pdfBytes: ArrayBuffer,
   signatureImage: string, // Data URL
   position: { x: number; y: number },
-  scale: number = 1,
+  signatureSize: { width: number; height: number }, // Size of signature in PDF points
   pageNumber: number = 0
 ): Promise<Uint8Array> {
   try {
-    console.log('Starting PDF signing process...', { position, scale, pageNumber });
+    console.log('Starting PDF signing process...', { position, signatureSize, pageNumber });
 
     // Load the existing PDF
     const pdfDoc = await PDFDocument.load(pdfBytes);
@@ -45,15 +45,9 @@ export async function signPDF(
       originalHeight: embeddedImage.height
     });
 
-    // Calculate signature dimensions
-    // The signature image is typically large, so we need to scale it down significantly
-    const signatureBaseWidth = 200; // Base width for signature in PDF points
-    const signatureAspectRatio = embeddedImage.height / embeddedImage.width;
-    const signatureBaseHeight = signatureBaseWidth * signatureAspectRatio;
-
-    // Apply the user's scale
-    const finalWidth = signatureBaseWidth * scale;
-    const finalHeight = signatureBaseHeight * scale;
+    // Use the size directly from the UI (already scaled and converted)
+    const finalWidth = signatureSize.width;
+    const finalHeight = signatureSize.height;
 
     console.log('Final signature dimensions:', { finalWidth, finalHeight });
 
