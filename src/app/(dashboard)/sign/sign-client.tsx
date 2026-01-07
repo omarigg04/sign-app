@@ -25,6 +25,7 @@ export function SignPageClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [limitInfo, setLimitInfo] = useState<{ canSign: boolean; remaining: number; plan: string } | null>(null);
+  const [pdfScale, setPdfScale] = useState(1); // Zoom level for PDF viewer
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -120,6 +121,18 @@ export function SignPageClient() {
       const newPageNumber = prevPageNumber + offset;
       return numPages ? Math.min(Math.max(1, newPageNumber), numPages) : 1;
     });
+  };
+
+  const handleZoomIn = () => {
+    setPdfScale(prev => Math.min(prev + 0.25, 3)); // Max 300%
+  };
+
+  const handleZoomOut = () => {
+    setPdfScale(prev => Math.max(prev - 0.25, 0.5)); // Min 50%
+  };
+
+  const handleResetZoom = () => {
+    setPdfScale(1); // Reset to 100%
   };
 
   const handleExportPDF = async () => {
@@ -399,44 +412,83 @@ export function SignPageClient() {
                 </p>
               )}
             </div>
-            {pdfFile && numPages && (
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => changePage(-1)}
-                  disabled={pageNumber <= 1}
-                  variant="outline"
-                  size="sm"
-                >
-                  Anterior
-                </Button>
-                <Button
-                  onClick={() => changePage(1)}
-                  disabled={pageNumber >= numPages}
-                  variant="outline"
-                  size="sm"
-                >
-                  Siguiente
-                </Button>
+            {pdfFile && (
+              <div className="flex items-center gap-4">
+                {/* Zoom controls */}
+                <div className="flex items-center gap-2 border-r pr-4">
+                  <Button
+                    onClick={handleZoomOut}
+                    disabled={pdfScale <= 0.5}
+                    variant="outline"
+                    size="sm"
+                    title="Reducir zoom"
+                  >
+                    -
+                  </Button>
+                  <span className="text-sm font-medium min-w-[4rem] text-center">
+                    {Math.round(pdfScale * 100)}%
+                  </span>
+                  <Button
+                    onClick={handleZoomIn}
+                    disabled={pdfScale >= 3}
+                    variant="outline"
+                    size="sm"
+                    title="Aumentar zoom"
+                  >
+                    +
+                  </Button>
+                  <Button
+                    onClick={handleResetZoom}
+                    variant="outline"
+                    size="sm"
+                    title="Restablecer zoom"
+                  >
+                    100%
+                  </Button>
+                </div>
+
+                {/* Page navigation */}
+                {numPages && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => changePage(-1)}
+                      disabled={pageNumber <= 1}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      onClick={() => changePage(1)}
+                      disabled={pageNumber >= numPages}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-gray-100 p-6 flex items-center justify-center">
-          {pdfFile ? (
-            <div className="relative inline-block" ref={pdfContainerRef}>
-              <Document
-                file={pdfFile}
-                onLoadSuccess={onDocumentLoadSuccess}
-                className="shadow-2xl"
-              >
-                <Page
-                  pageNumber={pageNumber}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                  width={Math.min(window.innerWidth - 500, 1000)}
-                />
-              </Document>
+        <div className="flex-1 overflow-auto bg-gray-100 p-6">
+          <div className="min-h-full flex items-start justify-center">
+            {pdfFile ? (
+              <div className="relative inline-block" ref={pdfContainerRef}>
+                <Document
+                  file={pdfFile}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  className="shadow-2xl"
+                >
+                  <Page
+                    pageNumber={pageNumber}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                    width={Math.min(window.innerWidth - 500, 1000) * pdfScale}
+                  />
+                </Document>
 
               {/* Draggable Signature Overlay */}
               {isPlacingSignature && signatureImage && (
@@ -454,14 +506,15 @@ export function SignPageClient() {
                   </div>
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="text-center p-12 text-gray-400">
-              <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No hay PDF cargado</p>
-              <p className="text-sm">Selecciona un PDF desde el sidebar para comenzar</p>
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="text-center p-12 text-gray-400">
+                <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">No hay PDF cargado</p>
+                <p className="text-sm">Selecciona un PDF desde el sidebar para comenzar</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
