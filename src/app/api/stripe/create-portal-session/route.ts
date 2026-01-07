@@ -3,12 +3,17 @@ import { auth } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
 import prisma from '@/lib/db';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-12-15.clover',
-});
-
 export async function POST(req: NextRequest) {
   try {
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeSecretKey) {
+      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2025-12-15.clover',
+    });
+
     // Get authenticated user
     const { userId } = await auth();
     if (!userId) {

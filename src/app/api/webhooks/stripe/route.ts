@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import prisma from '@/lib/db';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-12-15.clover',
-});
-
 export async function POST(req: NextRequest) {
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  if (!endpointSecret) {
-    console.error('STRIPE_WEBHOOK_SECRET is not set');
-    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+  if (!stripeSecretKey || !endpointSecret) {
+    console.error('Stripe environment variables not set');
+    return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
   }
+
+  const stripe = new Stripe(stripeSecretKey, {
+    apiVersion: '2025-12-15.clover',
+  });
 
   const sig = req.headers.get('stripe-signature');
 
