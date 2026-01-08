@@ -1,11 +1,14 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
 
-  // Configuración para Turbopack (dejarlo vacío - react-pdf debería funcionar sin aliases)
-  turbopack: {},
+  // Configuración para Turbopack
+  turbopack: {
+    root: __dirname,
+  },
 
   // Configuración para Webpack cuando se usa --webpack
   webpack: (config) => {
