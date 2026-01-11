@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const planEnum = pgEnum('plan', ['FREE', 'PREMIUM']);
 
@@ -7,7 +8,7 @@ export const users = pgTable('User', {
   email: text('email').notNull().unique(),
   name: text('name'),
   plan: planEnum('plan').notNull().default('FREE'),
-  stripeCustomerId: text('stripeCustomerId').unique(),
+  stripeCustomerId: text('stripeCustomerId').unique().default(sql`NULL`),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 });
