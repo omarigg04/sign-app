@@ -9,11 +9,16 @@ export async function createUser(data: {
   name: string | null;
   plan?: string;
 }) {
+  const now = new Date();
+  // Pass ALL values explicitly to avoid Drizzle using 'default' keyword which postgres-js doesn't support
   const [user] = await db.insert(users).values({
     id: data.id,
     email: data.email,
     name: data.name,
-    plan: (data.plan || 'FREE') as any,
+    plan: (data.plan || 'FREE') as 'FREE' | 'PREMIUM',
+    stripeCustomerId: null,
+    createdAt: now,
+    updatedAt: now,
   }).returning();
   return user;
 }
@@ -45,7 +50,14 @@ export async function deleteUser(id: string) {
 // Signature operations
 export async function createSignature(data: { userId: string; fileName: string; weekNumber: string; monthYear: string }) {
   const id = `sig_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const [signature] = await db.insert(signatures).values({ id, ...data }).returning();
+  const [signature] = await db.insert(signatures).values({
+    id,
+    userId: data.userId,
+    fileName: data.fileName,
+    signedAt: new Date(),
+    weekNumber: data.weekNumber,
+    monthYear: data.monthYear,
+  }).returning();
   return signature;
 }
 
