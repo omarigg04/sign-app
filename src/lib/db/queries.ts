@@ -3,8 +3,13 @@ import { db } from './index';
 import { users, signatures, type NewUser } from './schema';
 
 // User operations
-export async function createUser(data: NewUser) {
-  const [user] = await db.insert(users).values(data).returning();
+export async function createUser(data: Omit<NewUser, 'createdAt' | 'updatedAt'>) {
+  const now = new Date();
+  const [user] = await db.insert(users).values({
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+  }).returning();
   return user;
 }
 
@@ -23,7 +28,7 @@ export async function getUserByStripeCustomerId(stripeCustomerId: string) {
   return user;
 }
 
-export async function updateUser(id: string, data: Partial<NewUser>) {
+export async function updateUser(id: string, data: Partial<Omit<NewUser, 'createdAt' | 'updatedAt'>>) {
   const [user] = await db.update(users).set({ ...data, updatedAt: new Date() }).where(eq(users.id, id)).returning();
   return user;
 }
