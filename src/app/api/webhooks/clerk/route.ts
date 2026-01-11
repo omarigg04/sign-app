@@ -55,6 +55,8 @@ export async function POST(req: Request) {
         return new NextResponse('No email found for user', { status: 400 });
       }
 
+      console.log('🔄 Creating user with data:', { id, email, name: `${first_name || ''} ${last_name || ''}`.trim() });
+
       await prisma.user.create({
         data: {
           id,
@@ -63,10 +65,18 @@ export async function POST(req: Request) {
           plan: 'FREE',
         },
       });
-      console.log('User created in database:', id, email);
-    } catch (error) {
-      console.error('Error creating user:', error);
-      return new NextResponse('Error creating user', { status: 500 });
+      console.log('✓ User created successfully:', id, email);
+      return new NextResponse('', { status: 200 });
+    } catch (error: any) {
+      console.error('✗ Error creating user:', {
+        message: error?.message,
+        code: error?.code,
+        meta: error?.meta,
+      });
+      return new NextResponse(JSON.stringify({ error: error?.message || 'Unknown error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   } else if (eventType === 'user.updated') {
     try {
@@ -83,20 +93,28 @@ export async function POST(req: Request) {
           name: `${first_name || ''} ${last_name || ''}`.trim() || null,
         },
       });
-      console.log('User updated in database:', id);
-    } catch (error) {
-      console.error('Error updating user:', error);
-      return new NextResponse('Error updating user', { status: 500 });
+      console.log('✓ User updated successfully:', id);
+      return new NextResponse('', { status: 200 });
+    } catch (error: any) {
+      console.error('✗ Error updating user:', error?.message);
+      return new NextResponse(JSON.stringify({ error: error?.message || 'Unknown error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   } else if (eventType === 'user.deleted') {
     try {
       await prisma.user.delete({
         where: { id },
       });
-      console.log('User deleted from database:', id);
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      return new NextResponse('Error deleting user', { status: 500 });
+      console.log('✓ User deleted successfully:', id);
+      return new NextResponse('', { status: 200 });
+    } catch (error: any) {
+      console.error('✗ Error deleting user:', error?.message);
+      return new NextResponse(JSON.stringify({ error: error?.message || 'Unknown error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 
