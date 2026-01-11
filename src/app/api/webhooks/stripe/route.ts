@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import prisma from '@/lib/db';
+import { getUserByStripeCustomerId, updateUser } from '@/lib/db/queries';
 
 export async function POST(req: NextRequest) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -41,12 +41,9 @@ export async function POST(req: NextRequest) {
 
           if (userId && session.customer) {
             // Update user's plan to PREMIUM and save customer ID
-            await prisma.user.update({
-              where: { id: userId },
-              data: {
-                plan: 'PREMIUM',
-                stripeCustomerId: session.customer as string
-              },
+            await updateUser(userId, {
+              plan: 'PREMIUM',
+              stripeCustomerId: session.customer as string
             });
           }
         }
@@ -59,20 +56,15 @@ export async function POST(req: NextRequest) {
           const customerId = subscription.customer as string;
 
           // Find user by stripeCustomerId
-          const user = await prisma.user.findFirst({
-            where: { stripeCustomerId: customerId },
-          });
+          const user = await getUserByStripeCustomerId(customerId);
 
           if (user) {
             // Determine if the subscription is active
             const isActive = subscription.status === 'active' || subscription.status === 'trialing';
 
             // Update user's plan based on subscription status
-            await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                plan: isActive ? 'PREMIUM' : 'FREE'
-              },
+            await updateUser(user.id, {
+              plan: isActive ? 'PREMIUM' : 'FREE'
             });
           }
         }
@@ -85,16 +77,11 @@ export async function POST(req: NextRequest) {
           const customerId = subscription.customer as string;
 
           // Find user by stripeCustomerId
-          const user = await prisma.user.findFirst({
-            where: { stripeCustomerId: customerId },
-          });
+          const user = await getUserByStripeCustomerId(customerId);
 
           if (user) {
             // Downgrade user to FREE plan
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { plan: 'FREE' },
-            });
+            await updateUser(user.id, { plan: 'FREE' });
           }
         }
         break;

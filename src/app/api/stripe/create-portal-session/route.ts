@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
-import prisma from '@/lib/db';
+import { getUserById } from '@/lib/db/queries';
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,9 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const user = await getUserById(userId);
 
     if (!user || !user.stripeCustomerId) {
       return NextResponse.json({ error: 'User does not have a Stripe customer ID' }, { status: 400 });

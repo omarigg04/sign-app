@@ -1,7 +1,7 @@
 import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { createUser, updateUser, deleteUser } from '@/lib/db/queries';
 
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
@@ -57,13 +57,11 @@ export async function POST(req: Request) {
 
       console.log('🔄 Creating user with data:', { id, email, name: `${first_name || ''} ${last_name || ''}`.trim() });
 
-      await prisma.user.create({
-        data: {
-          id,
-          email,
-          name: `${first_name || ''} ${last_name || ''}`.trim() || null,
-          plan: 'FREE',
-        },
+      await createUser({
+        id,
+        email,
+        name: `${first_name || ''} ${last_name || ''}`.trim() || null,
+        plan: 'FREE',
       });
       console.log('✓ User created successfully:', id, email);
       return new NextResponse('', { status: 200 });
@@ -86,12 +84,9 @@ export async function POST(req: Request) {
         return new NextResponse('No email found for user', { status: 400 });
       }
 
-      await prisma.user.update({
-        where: { id },
-        data: {
-          email,
-          name: `${first_name || ''} ${last_name || ''}`.trim() || null,
-        },
+      await updateUser(id, {
+        email,
+        name: `${first_name || ''} ${last_name || ''}`.trim() || null,
       });
       console.log('✓ User updated successfully:', id);
       return new NextResponse('', { status: 200 });
@@ -104,9 +99,7 @@ export async function POST(req: Request) {
     }
   } else if (eventType === 'user.deleted') {
     try {
-      await prisma.user.delete({
-        where: { id },
-      });
+      await deleteUser(id);
       console.log('✓ User deleted successfully:', id);
       return new NextResponse('', { status: 200 });
     } catch (error: any) {

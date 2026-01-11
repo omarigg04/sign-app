@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
 
+  // Exclude Prisma from optimization to avoid Turbopack minification issues
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+  },
+
   // Configuración para Webpack cuando se usa --webpack
   webpack: (config) => {
     // Configuración para react-pdf

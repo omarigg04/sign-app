@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
-import prisma from '@/lib/db';
+import { getUserById, updateUser } from '@/lib/db/queries';
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,9 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get user from database to check or update their stripeCustomerId
-    let user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    let user = await getUserById(userId);
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -42,10 +40,7 @@ export async function POST(req: NextRequest) {
       stripeCustomerId = customer.id;
 
       // Update user with the new stripeCustomerId
-      user = await prisma.user.update({
-        where: { id: userId },
-        data: { stripeCustomerId },
-      });
+      user = await updateUser(userId, { stripeCustomerId });
     }
 
     // Create a checkout session
