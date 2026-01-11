@@ -23,7 +23,7 @@ export async function createUser(data: {
     RETURNING *
   `);
 
-  return result.rows[0];
+  return result[0];
 }
 
 export async function getUserById(id: string) {
