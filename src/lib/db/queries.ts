@@ -9,17 +9,12 @@ export async function createUser(data: {
   name: string | null;
   plan?: string;
 }) {
-  const now = new Date();
-  const values: any = {
+  const [user] = await db.insert(users).values({
     id: data.id,
     email: data.email,
     name: data.name,
     plan: (data.plan || 'FREE') as any,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const [user] = await db.insert(users).values(values).returning();
+  }).returning();
   return user;
 }
 
