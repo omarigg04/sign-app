@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import prisma from '@/lib/db';
+import { getUserById, countSignatures } from '@/lib/db/queries';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 export async function GET(req: NextRequest) {
@@ -12,10 +12,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { plan: true }
-    });
+    const user = await getUserById(userId);
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -36,26 +33,10 @@ export async function GET(req: NextRequest) {
 
     if (plan === 'FREE') {
       // FREE plan: 1 signature per week
-      signaturesCount = await prisma.signature.count({
-        where: {
-          userId,
-          signedAt: {
-            gte: startOfCurrentWeek,
-            lte: endOfCurrentWeek,
-          },
-        },
-      });
+      signaturesCount = await countSignatures(userId, startOfCurrentWeek, endOfCurrentWeek);
     } else if (plan === 'PREMIUM') {
       // PREMIUM plan: 50 signatures per month
-      signaturesCount = await prisma.signature.count({
-        where: {
-          userId,
-          signedAt: {
-            gte: startOfCurrentMonth,
-            lte: endOfCurrentMonth,
-          },
-        },
-      });
+      signaturesCount = await countSignatures(userId, startOfCurrentMonth, endOfCurrentMonth);
     }
 
     const canSign = signaturesCount < maxSignatures;

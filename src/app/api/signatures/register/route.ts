@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import prisma from '@/lib/db';
+import { getUserById, countSignatures, createSignature } from '@/lib/db/queries';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 export async function POST(req: NextRequest) {
@@ -20,10 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get user from database to check their plan
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { plan: true }
-    });
+    const user = await getUserById(userId);
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -44,26 +41,10 @@ export async function POST(req: NextRequest) {
 
     if (plan === 'FREE') {
       // FREE plan: check signatures this week
-      signaturesCount = await prisma.signature.count({
-        where: {
-          userId,
-          signedAt: {
-            gte: startOfCurrentWeek,
-            lte: endOfCurrentWeek,
-          },
-        },
-      });
+      signaturesCount = await countSignatures(userId, startOfCurrentWeek, endOfCurrentWeek);
     } else if (plan === 'PREMIUM') {
       // PREMIUM plan: check signatures this month
-      signaturesCount = await prisma.signature.count({
-        where: {
-          userId,
-          signedAt: {
-            gte: startOfCurrentMonth,
-            lte: endOfCurrentMonth,
-          },
-        },
-      });
+      signaturesCount = await countSignatures(userId, startOfCurrentMonth, endOfCurrentMonth);
     }
 
     // Check if user has exceeded their limit
@@ -74,13 +55,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Register the new signature
-    const newSignature = await prisma.signature.create({
-      data: {
-        userId,
-        fileName,
-        weekNumber: parseInt(`${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(getWeekNumber(now)).padStart(2, '0')}`), // Format: YYYYMMWW
-        monthYear: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, // Format: YYYY-MM
-      },
+    const weekNumber = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(getWeekNumber(now)).padStart(2, '0')}`;
+    const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const newSignature = await createSignature({
+      userId,
+      fileName,
+      weekNumber,
+      monthYear,
     });
 
     return NextResponse.json({
