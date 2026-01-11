@@ -1,4 +1,4 @@
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { db } from './index';
 import { users, signatures, type NewUser } from './schema';
 
@@ -10,17 +10,20 @@ export async function createUser(data: {
   plan?: string;
 }) {
   const now = new Date();
-  // Pass ALL values explicitly to avoid Drizzle using 'default' keyword which postgres-js doesn't support
-  const [user] = await db.insert(users).values({
-    id: data.id,
-    email: data.email,
-    name: data.name,
-    plan: (data.plan || 'FREE') as 'FREE' | 'PREMIUM',
-    stripeCustomerId: null,
-    createdAt: now,
-    updatedAt: now,
-  }).returning();
-  return user;
+  const plan = data.plan || 'FREE';
+
+  // Use raw SQL to avoid Drizzle/postgres-js null handling issues
+  const result = await db.execute(sql`
+    INSERT INTO "User" ("id", "email", "name", "plan", "stripeCustomerId", "createdAt", "updatedAt")
+    VALUES (${data.id}, ${data.email}, ${data.name}, ${plan}::"plan", NULL, ${now}, ${now})
+    ON CONFLICT ("id") DO UPDATE SET
+      "email" = EXCLUDED."email",
+      "name" = EXCLUDED."name",
+      "updatedAt" = EXCLUDED."updatedAt"
+    RETURNING *
+  `);
+
+  return result.rows[0];
 }
 
 export async function getUserById(id: string) {
