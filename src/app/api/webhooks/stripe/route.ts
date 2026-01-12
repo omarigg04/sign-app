@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { getUserByStripeCustomerId, updateUser } from '@/lib/db/queries';
+import { getProfileByStripeCustomerId, updateProfile } from '@/lib/db/queries';
 
 export async function POST(req: NextRequest) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
           const userId = session.metadata?.userId;
 
           if (userId && session.customer) {
-            // Update user's plan to PREMIUM and save customer ID
-            await updateUser(userId, {
+            // Update profile's plan to PREMIUM and save customer ID
+            await updateProfile(userId, {
               plan: 'PREMIUM',
               stripeCustomerId: session.customer as string
             });
@@ -55,15 +55,15 @@ export async function POST(req: NextRequest) {
           const subscription = event.data.object as Stripe.Subscription;
           const customerId = subscription.customer as string;
 
-          // Find user by stripeCustomerId
-          const user = await getUserByStripeCustomerId(customerId);
+          // Find profile by stripeCustomerId
+          const profile = await getProfileByStripeCustomerId(customerId);
 
-          if (user) {
+          if (profile) {
             // Determine if the subscription is active
             const isActive = subscription.status === 'active' || subscription.status === 'trialing';
 
-            // Update user's plan based on subscription status
-            await updateUser(user.id, {
+            // Update profile's plan based on subscription status
+            await updateProfile(profile.id, {
               plan: isActive ? 'PREMIUM' : 'FREE'
             });
           }
@@ -76,12 +76,12 @@ export async function POST(req: NextRequest) {
           const subscription = event.data.object as Stripe.Subscription;
           const customerId = subscription.customer as string;
 
-          // Find user by stripeCustomerId
-          const user = await getUserByStripeCustomerId(customerId);
+          // Find profile by stripeCustomerId
+          const profile = await getProfileByStripeCustomerId(customerId);
 
-          if (user) {
-            // Downgrade user to FREE plan
-            await updateUser(user.id, { plan: 'FREE' });
+          if (profile) {
+            // Downgrade profile to FREE plan
+            await updateProfile(profile.id, { plan: 'FREE' });
           }
         }
         break;

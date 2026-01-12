@@ -2,10 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { FileSignature, CheckCircle2, Zap, Shield } from "lucide-react";
-import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function Home() {
-  const { userId } = await auth();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -17,7 +18,7 @@ export default async function Home() {
             <span className="text-2xl font-bold text-gray-900">SignPDF</span>
           </div>
           <div className="flex items-center gap-4">
-            {userId ? (
+            {user ? (
               <>
                 <Button variant="ghost" asChild>
                   <Link href="/dashboard">Dashboard</Link>
@@ -52,7 +53,7 @@ export default async function Home() {
             sin instalaciones. Solo carga, firma y descarga.
           </p>
           <div className="mt-10 flex items-center justify-center gap-4">
-            {userId ? (
+            {user ? (
               <Button size="lg" asChild>
                 <Link href="/sign" className="gap-2">
                   <FileSignature className="h-5 w-5" />
@@ -170,7 +171,7 @@ export default async function Home() {
                 </li>
               </ul>
               <Button className="w-full mt-6" variant="outline" asChild>
-                <Link href={userId ? "/sign" : "/sign-up"}>Comenzar Gratis</Link>
+                <Link href={user ? "/sign" : "/sign-up"}>Comenzar Gratis</Link>
               </Button>
             </CardContent>
           </Card>
@@ -207,7 +208,7 @@ export default async function Home() {
                 </li>
               </ul>
               <Button className="w-full mt-6" asChild>
-                <Link href={userId ? "/upgrade" : "/sign-up"}>Mejorar a Premium</Link>
+                <Link href={user ? "/upgrade" : "/sign-up"}>Mejorar a Premium</Link>
               </Button>
             </CardContent>
           </Card>
@@ -224,7 +225,7 @@ export default async function Home() {
             Comienza gratis hoy, sin tarjeta de crédito requerida
           </p>
           <Button size="lg" variant="secondary" asChild>
-            <Link href={userId ? "/sign" : "/sign-up"}>
+            <Link href={user ? "/sign" : "/sign-up"}>
               Comenzar Ahora
             </Link>
           </Button>

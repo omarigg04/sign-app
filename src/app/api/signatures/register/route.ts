@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { getUserById, countSignatures, createSignature } from '@/lib/db/queries';
+import { createClient } from '@/lib/supabase/server';
+import { getProfileById, countSignatures, createSignature, createProfile } from '@/lib/db/queries';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 export async function POST(req: NextRequest) {
   try {
-    // Get authenticated user
-    const { userId } = await auth();
-    if (!userId) {
+    // Get authenticated user from Supabase
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -19,14 +21,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'fileName is required' }, { status: 400 });
     }
 
-    // Get user from database to check their plan
-    const user = await getUserById(userId);
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    // Get or create profile
+    let profile = await getProfileById(user.id);
+    if (!profile) {
+      profile = await createProfile(user.id);
     }
 
-    const { plan } = user;
+    const { plan } = profile;
 
     // Get current week and month for calculating periods
     const now = new Date();
@@ -41,10 +42,10 @@ export async function POST(req: NextRequest) {
 
     if (plan === 'FREE') {
       // FREE plan: check signatures this week
-      signaturesCount = await countSignatures(userId, startOfCurrentWeek, endOfCurrentWeek);
+      signaturesCount = await countSignatures(user.id, startOfCurrentWeek, endOfCurrentWeek);
     } else if (plan === 'PREMIUM') {
       // PREMIUM plan: check signatures this month
-      signaturesCount = await countSignatures(userId, startOfCurrentMonth, endOfCurrentMonth);
+      signaturesCount = await countSignatures(user.id, startOfCurrentMonth, endOfCurrentMonth);
     }
 
     // Check if user has exceeded their limit
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
     const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
     const newSignature = await createSignature({
-      userId,
+      userId: user.id,
       fileName,
       weekNumber,
       monthYear,
