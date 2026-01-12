@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
-import { getUserById } from '@/lib/db/queries';
+import { getProfileById, createProfile } from '@/lib/db/queries';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,22 +14,27 @@ export async function POST(req: NextRequest) {
       apiVersion: '2025-12-15.clover',
     });
 
-    // Get authenticated user
-    const { userId } = await auth();
-    if (!userId) {
+    // Get authenticated user from Supabase
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user from database
-    const user = await getUserById(userId);
+    // Get or create profile
+    let profile = await getProfileById(user.id);
+    if (!profile) {
+      profile = await createProfile(user.id);
+    }
 
-    if (!user || !user.stripeCustomerId) {
+    if (!profile.stripeCustomerId) {
       return NextResponse.json({ error: 'User does not have a Stripe customer ID' }, { status: 400 });
     }
 
     // Create billing portal session
     const session = await stripe.billingPortal.sessions.create({
-      customer: user.stripeCustomerId,
+      customer: profile.stripeCustomerId,
       return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
     });
 

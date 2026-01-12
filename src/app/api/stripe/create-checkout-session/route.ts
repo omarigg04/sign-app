@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
-import { getUserById, updateUser } from '@/lib/db/queries';
+import { getProfileById, updateProfile, createProfile } from '@/lib/db/queries';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,33 +14,34 @@ export async function POST(req: NextRequest) {
       apiVersion: '2025-12-15.clover',
     });
 
-    // Get authenticated user
-    const { userId } = await auth();
-    if (!userId) {
+    // Get authenticated user from Supabase
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user from database to check or update their stripeCustomerId
-    let user = await getUserById(userId);
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    // Get or create profile
+    let profile = await getProfileById(user.id);
+    if (!profile) {
+      profile = await createProfile(user.id);
     }
 
     // If user doesn't have a stripeCustomerId, create a customer in Stripe
-    let stripeCustomerId = user.stripeCustomerId;
+    let stripeCustomerId = profile.stripeCustomerId;
     if (!stripeCustomerId) {
       const customer = await stripe.customers.create({
-        email: user.email,
+        email: user.email || '',
         metadata: {
-          userId: userId,
+          userId: user.id,
         },
       });
 
       stripeCustomerId = customer.id;
 
-      // Update user with the new stripeCustomerId
-      user = await updateUser(userId, { stripeCustomerId });
+      // Update profile with the new stripeCustomerId
+      profile = await updateProfile(user.id, { stripeCustomerId });
     }
 
     // Create a checkout session
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
       metadata: {
-        userId,
+        userId: user.id,
       },
     });
 
