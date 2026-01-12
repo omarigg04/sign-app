@@ -24,30 +24,25 @@ export async function createProfile(userId: string): Promise<Profile> {
 
 export async function updateProfile(id: string, data: { plan?: string; stripeCustomerId?: string | null }): Promise<Profile> {
   const now = new Date();
-  const updates: string[] = ['updated_at = $1'];
-  const values: any[] = [now];
-  let paramIndex = 2;
+
+  // Build update object
+  const updateData: any = { updatedAt: now };
 
   if (data.plan) {
-    updates.push(`plan = $${paramIndex}::"plan"`);
-    values.push(data.plan);
-    paramIndex++;
+    updateData.plan = data.plan;
   }
 
   if (data.stripeCustomerId !== undefined) {
-    updates.push(`stripe_customer_id = $${paramIndex}`);
-    values.push(data.stripeCustomerId);
-    paramIndex++;
+    updateData.stripeCustomerId = data.stripeCustomerId;
   }
 
-  const result = await db.execute(sql.raw(`
-    UPDATE profiles
-    SET ${updates.join(', ')}
-    WHERE id = $${paramIndex}::uuid
-    RETURNING *
-  `, [...values, id]));
+  const [result] = await db
+    .update(profiles)
+    .set(updateData)
+    .where(eq(profiles.id, id))
+    .returning();
 
-  return result[0] as Profile;
+  return result;
 }
 
 export async function getProfileByStripeCustomerId(stripeCustomerId: string): Promise<Profile | undefined> {
