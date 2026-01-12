@@ -23,10 +23,10 @@ export default function UpgradePage() {
         throw new Error(errorData.message || 'Error creating checkout session');
       }
       
-      const { sessionId } = await response.json();
-      
+      const { url } = await response.json();
+
       // Redirect to Stripe checkout
-      window.location.href = `https://checkout.stripe.com/pay/${sessionId}`;
+      window.location.href = url;
     } catch (error) {
       console.error('Error upgrading:', error);
       alert('Error al procesar la actualización. Por favor intenta de nuevo.');
