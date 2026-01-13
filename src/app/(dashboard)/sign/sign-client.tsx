@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { signPDF, downloadSignedPDF } from '@/lib/utils/signPDF';
 import { checkSignatureLimit, registerSignature } from '@/lib/utils/signatureLimits';
-import { Upload, FileText } from 'lucide-react';
+import { Upload, FileText, Sparkles, FileSignature, CheckCircle2 } from 'lucide-react';
 
 // Set up the worker for PDF.js
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -344,24 +344,24 @@ export function SignPageClient() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen overflow-hidden bg-gray-50">
+    <div className="flex flex-col lg:flex-row h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
       {/* Mobile Tabs - Only visible on mobile */}
-      <div className="lg:hidden bg-white border-b border-gray-200">
+      <div className="lg:hidden bg-white/80 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
         <div className="flex">
           <button
             onClick={() => setMobileTab('prepare')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${mobileTab === 'prepare'
-              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-300 ${mobileTab === 'prepare'
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-blue-50/30'
               }`}
           >
             Preparar
           </button>
           <button
             onClick={() => setMobileTab('preview')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${mobileTab === 'preview'
-              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-300 ${mobileTab === 'preview'
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-blue-50/30'
               }`}
           >
             Vista Previa
@@ -370,131 +370,145 @@ export function SignPageClient() {
       </div>
 
       {/* Sidebar - Always visible on desktop, conditionally on mobile */}
-      <div className={`${mobileTab === 'prepare' ? 'flex' : 'hidden'} lg:flex w-full lg:w-[480px] bg-white border-r border-gray-200 flex-col overflow-y-auto`}>
-        <div className="p-6 border-b border-gray-200">
-          <Link href="/">
+      <aside className={`${mobileTab === 'prepare' ? 'flex' : 'hidden'} lg:flex w-full lg:w-[420px] border-r border-gray-200/80 bg-white/80 backdrop-blur-sm shadow-xl flex-col overflow-y-auto`}>
+        {/* Logo y Plan Info */}
+        <div className="p-6 border-b border-gray-200/50">
+          <Link href="/" className="block mb-6">
             <Image
               src="/logo2.png"
               alt="Logo"
               width={150}
               height={50}
-              className="h-12 w-auto cursor-pointer"
+              className="h-12 w-auto cursor-pointer hover:scale-105 transition-transform duration-300"
               unoptimized
             />
           </Link>
+
+          {/* Plan Badge */}
           {limitInfo && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800">
-                Plan: <span className="font-semibold">{limitInfo.plan}</span>
-                <br />
-                Firmas restantes: <span className="font-semibold">{limitInfo.remaining}</span>
-              </p>
+            <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50 animate-fade-in">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-gray-700">Plan:</span>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
+                  <Sparkles className="h-3.5 w-3.5 text-white animate-pulse" />
+                  <span className="text-sm font-bold text-white">{limitInfo.plan}</span>
+                </div>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-sm text-gray-600">Firmas restantes:</span>
+                <span className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                  {limitInfo.remaining}
+                </span>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="flex-1 p-6 space-y-6">
-          {/* Upload PDF */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">1. Cargar PDF</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="application/pdf"
-                onChange={handleFileChange}
-              />
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full"
-                variant="outline"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {pdfFile ? 'Cambiar PDF' : 'Seleccionar PDF'}
-              </Button>
-              {pdfFile && (
-                <div className="mt-3 p-3 bg-gray-50 rounded flex items-start gap-2">
-                  <FileText className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {pdfFile.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {numPages ? `${numPages} página${numPages > 1 ? 's' : ''}` : 'Cargando...'}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* Step 1: Cargar PDF */}
+        <div className="p-6 border-b border-gray-200/50 space-y-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md shadow-blue-500/30">
+              <span className="text-white font-bold text-sm">1</span>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Cargar PDF</h3>
+          </div>
 
-          {/* Signature Canvas */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">2. Crear Firma</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SignatureCanvasComponent
-                onSignatureChange={handleSignatureChange}
-                onPlaceSignature={handlePlaceSignature}
-                isPlacingSignature={isPlacingSignature}
-                pdfFile={pdfFile}
-                isLoading={isLoading}
-              />
-            </CardContent>
-          </Card>
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="application/pdf"
+            onChange={handleFileChange}
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            size="lg"
+            variant="outline"
+            className="w-full border-2 border-dashed border-blue-300 hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-300 group bg-transparent"
+          >
+            <Upload className="h-5 w-5 mr-2 text-blue-600 group-hover:scale-110 transition-transform duration-300" />
+            <span className="text-gray-900">{pdfFile ? 'Cambiar PDF' : 'Seleccionar PDF'}</span>
+          </Button>
 
-          {/* Actions - Hidden on mobile, visible on desktop */}
-          <Card className="hidden lg:block">
-            <CardHeader>
-              <CardTitle className="text-lg">3. Firmar</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                onClick={handlePlaceSignature}
-                className="w-full"
-                variant={isPlacingSignature ? "default" : "outline"}
-                disabled={!pdfFile || !signatureImage || isLoading}
-              >
-                {isPlacingSignature ? 'Ocultar firma' : 'Colocar firma en PDF'}
-              </Button>
-
-              <Button
-                onClick={handleExportPDF}
-                className="w-full"
-                disabled={!pdfFile || !signatureImage || isLoading || (limitInfo ? !limitInfo.canSign : false)}
-              >
-                {isLoading ? `Exportando... ${progress}%` : 'Exportar PDF firmado'}
-              </Button>
-
-              {isLoading && (
-                <div className="space-y-2">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${progress}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {pdfFile && (
+            <div className="p-3 rounded-xl bg-white/50 border border-gray-200 flex items-start gap-2 animate-fade-in">
+              <FileText className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {pdfFile.name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {numPages ? `${numPages} página${numPages > 1 ? 's' : ''}` : 'Cargando...'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+
+        {/* Step 2: Crear Firma */}
+        <div className="p-6 border-b border-gray-200/50 space-y-4 flex-1">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/30">
+              <span className="text-white font-bold text-sm">2</span>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Crear Firma</h3>
+          </div>
+
+          <SignatureCanvasComponent
+            onSignatureChange={handleSignatureChange}
+            onPlaceSignature={handlePlaceSignature}
+            isPlacingSignature={isPlacingSignature}
+            pdfFile={pdfFile}
+            isLoading={isLoading}
+          />
+        </div>
+
+        {/* Step 3: Firmar - Hidden on mobile, visible on desktop */}
+        <div className="hidden lg:block p-6 space-y-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-md shadow-emerald-500/30">
+              <span className="text-white font-bold text-sm">3</span>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Firmar</h3>
+          </div>
+
+          <p className="text-sm text-gray-600 leading-relaxed px-2">Colocar firma en PDF</p>
+
+          <Button
+            size="lg"
+            onClick={handleExportPDF}
+            className="w-full group bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:-translate-y-1"
+            disabled={!pdfFile || !signatureImage || isLoading || (limitInfo ? !limitInfo.canSign : false)}
+          >
+            <FileSignature className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+            {isLoading ? `Exportando... ${progress}%` : 'Exportar PDF firmado'}
+          </Button>
+
+          {isLoading && (
+            <div className="space-y-2">
+              <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-1000 ease-out shadow-lg shadow-blue-500/30"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+              <p className="text-xs text-gray-500 text-right">{progress}%</p>
+            </div>
+          )}
+        </div>
+      </aside>
 
       {/* Main Content - PDF Viewer - Always visible on desktop, conditionally on mobile */}
-      <div className={`${mobileTab === 'preview' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col overflow-hidden`}>
-        <div className="bg-white border-b border-gray-200 px-3 lg:px-6 py-3 lg:py-4">
+      <main className={`${mobileTab === 'preview' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col overflow-hidden`}>
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200/50 bg-white/60 backdrop-blur-sm">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-0">
             <div>
-              <h2 className="text-base lg:text-lg font-semibold text-gray-900 truncate">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent truncate">
                 {pdfFile ? pdfFile.name : 'Vista previa del PDF'}
               </h2>
               {numPages && (
-                <p className="text-xs lg:text-sm text-gray-600">
+                <p className="text-sm text-gray-600 mt-1">
                   Página {pageNumber} de {numPages}
                 </p>
               )}
@@ -565,7 +579,7 @@ export function SignPageClient() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-gray-100 p-3 lg:p-6">
+        <div className="flex-1 overflow-auto bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-3 lg:p-6">
           <div className="min-h-full flex items-start justify-center">
             {pdfFile ? (
               <div className="relative inline-block" ref={pdfContainerRef}>
@@ -582,7 +596,7 @@ export function SignPageClient() {
                       typeof window !== 'undefined'
                         ? window.innerWidth < 1024
                           ? Math.min(window.innerWidth - 40, 800) * pdfScale // Mobile: full width minus padding
-                          : Math.min(window.innerWidth - 550, 1000) * pdfScale // Desktop: account for wider sidebar (480px + padding)
+                          : Math.min(window.innerWidth - 500, 1000) * pdfScale // Desktop: account for sidebar (420px + padding/borders)
                         : 800 * pdfScale
                     }
                   />
@@ -606,42 +620,65 @@ export function SignPageClient() {
                 )}
               </div>
             ) : (
-              <div className="text-center p-8 lg:p-12 text-gray-400">
-                <FileText className="w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-4 opacity-50" />
-                <p className="text-base lg:text-lg font-medium">No hay PDF cargado</p>
-                <p className="text-xs lg:text-sm">
-                  <span className="lg:hidden">Ve a "Preparar" para seleccionar un PDF</span>
+              <Card className="max-w-md w-full border-0 bg-white/80 backdrop-blur-sm shadow-lg p-12 text-center animate-fade-in">
+                <div className="mb-6 flex justify-center">
+                  <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                    <FileText className="h-12 w-12 text-gray-400" />
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-bold text-gray-900 mb-3">No hay PDF cargado</h3>
+                <p className="text-gray-600 leading-relaxed mb-6">
+                  <span className="lg:hidden">Ve a "Preparar" para seleccionar un PDF y comenzar</span>
                   <span className="hidden lg:inline">Selecciona un PDF desde el sidebar para comenzar</span>
                 </p>
-              </div>
+
+                <div className="flex flex-col gap-3 text-sm text-gray-500">
+                  <div className="flex items-center gap-2 justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span>Carga tu documento</span>
+                  </div>
+                  <div className="flex items-center gap-2 justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span>Crea o selecciona tu firma</span>
+                  </div>
+                  <div className="flex items-center gap-2 justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span>Descarga tu PDF firmado</span>
+                  </div>
+                </div>
+              </Card>
             )}
           </div>
 
           {/* Actions - Visible on mobile only, below PDF preview */}
-          <div className="lg:hidden p-4 bg-white border-t border-gray-200">
+          <div className="lg:hidden p-4 bg-white/80 backdrop-blur-sm border-t border-gray-200/50">
             <div className="space-y-3">
               <Button
                 onClick={handleExportPDF}
-                className="w-full"
+                size="lg"
+                className="w-full group bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:-translate-y-1"
                 disabled={!pdfFile || !signatureImage || isLoading || (limitInfo ? !limitInfo.canSign : false)}
               >
+                <FileSignature className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
                 {isLoading ? `Exportando... ${progress}%` : 'Exportar PDF firmado'}
               </Button>
 
               {isLoading && (
                 <div className="space-y-2">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
                     <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-1000 ease-out shadow-lg shadow-blue-500/30"
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
+                  <p className="text-xs text-gray-500 text-right">{progress}%</p>
                 </div>
               )}
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
