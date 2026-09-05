@@ -1,206 +1,325 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileSignature, TrendingUp, Calendar, Settings, ArrowRight, Sparkles } from 'lucide-react';
+import { FileSignature, TrendingUp, Calendar, Settings, ArrowRight, Sparkles, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { checkSignatureLimit } from '@/lib/utils/signatureLimits';
+import { DashboardSkeleton } from '@/components/skeleton/dashboard-skeleton';
+import { createClient } from '@/lib/supabase/client';
+import { fetchUserHistory } from './actions';
+
+interface UserInfo {
+  canSign: boolean;
+  remaining: number;
+}
+
+interface AuthUser {
+  id: string;
+  email?: string;
+  user_metadata?: {
+    name?: string;
+  };
+  created_at?: string;
+}
+
+interface Transaction {
+  id: string;
+  type: 'purchase' | 'use' | 'refund';
+  amount: number;
+  description: string;
+  createdAt: Date;
+  balance: number;
+}
+
+interface Signature {
+  id: string;
+  fileName: string;
+  signedAt: Date;
+}
 
 export default function DashboardPage() {
-  const [limitInfo, setLimitInfo] = useState<any>(null);
+  const [creditInfo, setCreditInfo] = useState<UserInfo | null>(null);
+  const [userInfo, setUserInfo] = useState<AuthUser | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [signatureHistory, setSignatureHistory] = useState<Signature[]>([]);
   const [loading, setLoading] = useState(true);
-  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
-    const fetchLimitInfo = async () => {
+    const fetchData = async () => {
       try {
-        const data = await checkSignatureLimit();
-        setLimitInfo(data);
+        const supabase = createClient();
+
+        // Get user info
+        const { data: { user } } = await supabase.auth.getUser();
+        setUserInfo(user as AuthUser);
+
+        if (user?.id) {
+          // Get credit info
+          const creditData = await checkSignatureLimit();
+          setCreditInfo(creditData);
+
+          // Get history using Server Action
+          const history = await fetchUserHistory(user.id);
+          setTransactions(history.transactions as unknown as Transaction[]);
+          setSignatureHistory(history.signatures as unknown as Signature[]);
+        }
       } catch (error) {
-        console.error('Error fetching limit info:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLimitInfo();
+    fetchData();
   }, []);
 
-  const handleManageSubscription = async () => {
-    setPortalLoading(true);
-
-    try {
-      const response = await fetch('/api/stripe/create-portal-session', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error creating portal session');
-      }
-
-      const { url } = await response.json();
-
-      // Redirect to the billing portal
-      window.location.href = url;
-    } catch (error) {
-      console.error('Error managing subscription:', error);
-      alert('Error al acceder al panel de suscripción. Por favor intenta de nuevo.');
-      setPortalLoading(false);
-    }
-  };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold mb-6">Cargando dashboard...</h1>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
-
-  const firmasUsadas = limitInfo ? (limitInfo.maxSignatures - limitInfo.remaining) : 0;
-  const porcentajeUsado = limitInfo ? (firmasUsadas / limitInfo.maxSignatures) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
       <div className="container mx-auto px-4 py-8">
-        {/* Header con animación */}
+        {/* Header con Logo y Status indicator */}
         <div className="mb-12 animate-fade-in-up">
-          <div className="flex items-center gap-3 mb-4">
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
-              Dashboard
-            </h1>
-            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+          <div className="flex items-center">
+            <Link href="/">
+              <Image
+                src="/logo2.png"
+                alt="Logo"
+                width={250}
+                height={90}
+                className="h-24 w-auto cursor-pointer hover:scale-105 transition-transform duration-300"
+                unoptimized
+              />
+            </Link>
+            {/* <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div> */}
           </div>
-          <p className="text-lg text-gray-600">Gestiona tus firmas y suscripción</p>
         </div>
 
         {/* Grid de Cards */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Card de Información del Plan */}
-          <Card className="group relative overflow-hidden border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in">
+          <Card className="group relative overflow-hidden border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 animate-fade-in">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full blur-3xl"></div>
 
             <CardHeader className="relative z-10">
-              <CardDescription className="text-gray-600 font-medium">Información del Plan</CardDescription>
-              <CardTitle className="text-sm text-gray-500 mb-4">Tu plan actual y límites</CardTitle>
+              <CardDescription className="text-gray-600 font-medium">Tu Balance de Créditos</CardDescription>
+              <CardTitle className="text-sm text-gray-500 mb-4">Créditos disponibles para firmar</CardTitle>
 
-              {/* Plan Badge */}
+              {/* Credits Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30 mb-6 group-hover:shadow-xl group-hover:shadow-blue-500/40 transition-all duration-300">
                 <Sparkles className="h-5 w-5 text-white animate-pulse" />
-                <span className="text-2xl font-bold text-white">{limitInfo?.plan || 'FREE'}</span>
+                <span className="text-2xl font-bold text-white">Créditos</span>
               </div>
 
-              {/* Firmas Disponibles */}
+              {/* Créditos Disponibles */}
               <div className="space-y-2">
-                <p className="text-sm font-semibold text-gray-700">Firmas Disponibles</p>
+                <p className="text-sm font-semibold text-gray-700">Créditos Disponibles</p>
                 <div className="flex items-baseline gap-2">
-                  <span className={`text-5xl font-bold ${limitInfo?.remaining === 0 ? 'text-red-600' : 'bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent'}`}>
-                    {limitInfo?.remaining || 0}
+                  <span className={`text-5xl font-bold ${creditInfo?.remaining === 0 ? 'text-red-600' : 'bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent'}`}>
+                    {creditInfo?.remaining || 0}
                   </span>
-                  <span className="text-2xl text-gray-400">/{limitInfo?.maxSignatures || 1}</span>
+                  <span className="text-sm text-gray-600">firmas disponibles</span>
                 </div>
                 <p className="text-xs text-gray-500">
-                  {limitInfo?.plan === 'FREE' ? 'Restantes esta semana' : 'Restantes este mes'}
+                  {creditInfo?.remaining === 0 ? 'Sin créditos disponibles' : 'Puedes firmar PDFs'}
                 </p>
               </div>
 
-              {/* Periodo */}
+              {/* Status */}
               <div className="mt-6 pt-6 border-t border-gray-100">
-                <p className="text-sm font-semibold text-gray-700 mb-1">Periodo</p>
+                <p className="text-sm font-semibold text-gray-700 mb-1">Estado</p>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-blue-600" />
+                  <div className={`h-3 w-3 rounded-full ${creditInfo?.canSign ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                   <span className="text-gray-900 font-medium">
-                    {limitInfo?.plan === 'FREE' ? 'Semanal' : 'Mensual'}
+                    {creditInfo?.canSign ? 'Listo para firmar' : 'Sin créditos'}
                   </span>
                 </div>
               </div>
 
-              {/* Botón Upgrade para usuarios FREE */}
-              {limitInfo?.plan === 'FREE' && (
-                <div className="mt-6">
-                  <Button
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
-                    asChild
-                  >
-                    <Link href="/upgrade" className="gap-2">
-                      Mejorar a Premium
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              )}
+              {/* Botón Comprar Firmas */}
+              <div className="mt-6">
+                <Button
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
+                  asChild
+                >
+                  <Link href="/shop" className="gap-2">
+                    Comprar Créditos
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
             </CardHeader>
           </Card>
 
-          {/* Card de Uso Reciente */}
+          {/* Card de Información del Usuario */}
           <Card
-            className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in"
+            className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 animate-fade-in"
             style={{ animationDelay: '0.1s' }}
           >
             <CardHeader>
               <div className="flex items-center justify-between mb-4">
-                <CardDescription className="text-gray-600 font-medium">Uso Reciente</CardDescription>
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-amber-500/30">
-                  <TrendingUp className="h-6 w-6 text-white" />
+                <CardDescription className="text-gray-600 font-medium">Tu Perfil</CardDescription>
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-purple-500/30">
+                  <User className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <CardTitle className="text-sm text-gray-500 mb-8">Tus firmas más recientes</CardTitle>
+              <CardTitle className="text-sm text-gray-500 mb-8">Información de tu cuenta</CardTitle>
 
-              {/* Firmas Este Periodo */}
-              <div className="space-y-4">
+              {/* Información del Usuario */}
+              <div className="space-y-6">
+                {/* Nombre o Email */}
                 <div>
-                  <p className="text-sm font-semibold text-gray-700 mb-2">Firmas Este Periodo</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                      {firmasUsadas}
-                    </span>
-                    <span className="text-lg text-gray-400">de {limitInfo?.maxSignatures || 1} permitidas</span>
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Nombre de Usuario</p>
+                  <div className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-blue-600" />
+                    <p className="text-lg font-bold text-gray-900">
+                      {userInfo?.user_metadata?.name || userInfo?.email?.split('@')[0] || 'Usuario'}
+                    </p>
                   </div>
                 </div>
 
-                {/* Barra de progreso */}
-                <div className="space-y-2">
-                  <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-1000 ease-out shadow-lg shadow-blue-500/30"
-                      style={{ width: `${porcentajeUsado}%` }}
-                    />
+                {/* Email */}
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Email</p>
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-5 w-5 text-indigo-600" />
+                    <p className="text-sm text-gray-600">{userInfo?.email || 'No disponible'}</p>
                   </div>
-                  <p className="text-xs text-gray-500 text-right">{porcentajeUsado.toFixed(0)}% utilizado</p>
+                </div>
+
+                {/* Fecha de registro */}
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Miembro desde</p>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-emerald-600" />
+                    <p className="text-sm text-gray-600">
+                      {userInfo?.created_at
+                        ? new Date(userInfo.created_at).toLocaleDateString('es-MX', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        : 'No disponible'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* ID de Usuario */}
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 mb-2">ID de Cuenta</p>
+                  <p className="text-xs text-gray-500 font-mono break-all bg-gray-50 p-2 rounded">
+                    {userInfo?.id}
+                  </p>
                 </div>
               </div>
 
-              {/* Historial */}
+              {/* Botón de configuración */}
               <div className="mt-8 pt-6 border-t border-gray-100">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Historial Reciente</p>
-                <p className="text-sm text-gray-500 leading-relaxed">
-                  Aquí aparecerá el historial de tus firmas recientes. Esta funcionalidad se puede extender en futuras
-                  versiones.
-                </p>
+                <Button
+                  variant="outline"
+                  className="w-full border-gray-300 hover:bg-gray-50"
+                  asChild
+                >
+                  <Link href="/settings" className="gap-2">
+                    <Settings className="h-4 w-4" />
+                    Editar Perfil
+                  </Link>
+                </Button>
               </div>
             </CardHeader>
           </Card>
 
-          {/* Card de Acciones */}
+          {/* Card de Historial y Acciones */}
           <Card
-            className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in"
+            className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 animate-fade-in"
             style={{ animationDelay: '0.2s' }}
           >
             <CardHeader>
               <div className="flex items-center justify-between mb-4">
-                <CardDescription className="text-gray-600 font-medium">Acciones</CardDescription>
+                <CardDescription className="text-gray-600 font-medium">Historial</CardDescription>
                 <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-emerald-500/30">
-                  <FileSignature className="h-6 w-6 text-white" />
+                  <TrendingUp className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <CardTitle className="text-sm text-gray-500 mb-8">Opciones disponibles</CardTitle>
+              <CardTitle className="text-sm text-gray-500 mb-6">Firmas realizadas y transacciones</CardTitle>
 
-              <CardContent className="space-y-4 p-0">
-                {/* Botón Firmar PDF */}
+              {/* Historial de Firmas */}
+              {signatureHistory.length > 0 ? (
+                <div className="space-y-3 mb-8">
+                  <p className="text-xs font-semibold text-gray-700 uppercase">Firmas Recientes</p>
+                  {signatureHistory.map((sig) => (
+                    <div key={sig.id} className="flex items-start justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{sig.fileName}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(sig.signedAt).toLocaleDateString('es-MX', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                      <FileSignature className="h-4 w-4 text-blue-600 flex-shrink-0 mt-1" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-8 p-4 bg-gray-50 rounded-lg text-center">
+                  <p className="text-sm text-gray-500">Aún no has firmado ningún PDF</p>
+                </div>
+              )}
+
+              {/* Historial de Transacciones */}
+              {transactions.length > 0 ? (
+                <div className="space-y-3 mb-8 pt-6 border-t border-gray-200">
+                  <p className="text-xs font-semibold text-gray-700 uppercase">Transacciones Recientes</p>
+                  {transactions.map((trans) => (
+                    <div
+                      key={trans.id}
+                      className={`flex items-start justify-between p-3 rounded-lg border ${
+                        trans.type === 'use'
+                          ? 'bg-red-50 border-red-100'
+                          : 'bg-green-50 border-green-100'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{trans.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(trans.createdAt).toLocaleDateString('es-MX', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className={`text-sm font-bold ${trans.type === 'use' ? 'text-red-600' : 'text-green-600'}`}>
+                          {trans.type === 'use' ? '-' : '+'}{Math.abs(trans.amount)}
+                        </p>
+                        <p className="text-xs text-gray-500">Saldo: {trans.balance}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-8 pt-6 border-t border-gray-200">
+                  <p className="text-sm text-gray-500 text-center">Sin transacciones registradas</p>
+                </div>
+              )}
+
+              {/* Acciones - Al final */}
+              <div className="pt-6 border-t border-gray-200 space-y-3">
+                <p className="text-xs font-semibold text-gray-700 uppercase mb-4">Acciones</p>
                 <Button
                   asChild
                   size="lg"
@@ -213,38 +332,21 @@ export default function DashboardPage() {
                   </Link>
                 </Button>
 
-                {/* Gestionar Suscripción - Solo para PREMIUM */}
-                {limitInfo?.plan === 'PREMIUM' && (
-                  <div className="pt-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-3">Gestionar Suscripción</p>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="w-full border-2 hover:border-blue-300 hover:bg-blue-50/50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md group/settings bg-transparent"
-                      onClick={handleManageSubscription}
-                      disabled={portalLoading}
-                    >
-                      <Settings className="h-5 w-5 group-hover/settings:rotate-90 transition-transform duration-500" />
-                      {portalLoading ? 'Cargando...' : 'Ir al Panel de Suscripción'}
-                    </Button>
-                  </div>
-                )}
-
-                {/* Info adicional - Solo para usuarios FREE */}
-                {limitInfo?.plan === 'FREE' && (
-                  <div className="mt-8 pt-6 border-t border-gray-100">
-                    <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
-                      <Sparkles className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                {/* Info adicional - Mostrar si no hay créditos */}
+                {!creditInfo?.canSign && (
+                  <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-orange-50 to-red-50 border border-orange-100">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 mb-1">¿Necesitas más firmas?</p>
+                        <p className="text-sm font-semibold text-gray-900 mb-1">Sin créditos disponibles</p>
                         <p className="text-xs text-gray-600 leading-relaxed">
-                          Actualiza tu plan para obtener más firmas mensuales y funciones premium.
+                          Compra créditos para poder firmar PDFs nuevamente.
                         </p>
                       </div>
                     </div>
                   </div>
                 )}
-              </CardContent>
+              </div>
             </CardHeader>
           </Card>
         </div>

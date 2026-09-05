@@ -31,7 +31,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Protected routes
-  const protectedRoutes = ['/dashboard', '/upgrade']
+  const protectedRoutes = ['/dashboard', '/shop']
   const isProtectedRoute = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
   // Special case for /sign (but not /sign-in or /sign-up)
@@ -42,7 +42,10 @@ export async function middleware(request: NextRequest) {
   const protectedApiRoutes = ['/api/signatures', '/api/stripe']
   const isProtectedApi = protectedApiRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
-  if ((isProtectedRoute || isSignPage || isProtectedApi) && !user && !isAuthPage) {
+  // Webhook routes don't require auth
+  const isWebhook = request.nextUrl.pathname.startsWith('/api/webhooks')
+
+  if ((isProtectedRoute || isSignPage || (isProtectedApi && !isWebhook)) && !user && !isAuthPage) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/sign-in'
     redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname)

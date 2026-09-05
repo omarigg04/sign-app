@@ -157,11 +157,17 @@
   }
 
   .animate-fade-in {
-    animation: fade-in 0.6s ease-out;
+    animation-name: fade-in;
+    animation-duration: 0.6s;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
   }
 
   .animate-fade-in-up {
-    animation: fade-in-up 0.8s ease-out;
+    animation-name: fade-in-up;
+    animation-duration: 0.8s;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
   }
 
   .animate-gradient-x {

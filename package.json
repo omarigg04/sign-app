@@ -7,7 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:ui": "playwright test --ui",
+    "test:all": "npm run test && npm run test:e2e"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.5",
@@ -24,6 +31,7 @@
     "drizzle-orm": "^0.45.1",
     "file-saver": "^2.0.5",
     "lucide-react": "^0.562.0",
+    "marked": "^17.0.1",
     "micro": "^10.0.1",
     "next": "16.1.1",
     "pdf-lib": "^1.17.1",
@@ -33,6 +41,7 @@
     "react-dom": "19.2.3",
     "react-pdf": "^10.3.0",
     "react-signature-canvas": "^1.1.0-alpha.2",
+    "sonner": "^2.0.7",
     "stripe": "^20.1.1",
     "svix": "^1.84.1",
     "tailwind-merge": "^3.4.0",
@@ -40,7 +49,10 @@
   },
   "devDependencies": {
     "@clerk/types": "^4.101.9",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/file-saver": "^2.0.7",
     "@types/micro": "^7.3.7",
     "@types/node": "^20",
@@ -48,13 +60,19 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-signature-canvas": "^1.0.7",
+    "@vitest/ui": "^4.0.17",
     "babel-plugin-react-compiler": "1.0.0",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "jest": "^30.5.0",
+    "jest-environment-jsdom": "^30.5.0",
+    "playwright": "^1.62.1",
     "prisma": "^6.19.1",
     "tailwindcss": "^4",
+    "ts-jest": "^29.4.12",
     "typescript": "^5",
+    "vitest": "^4.0.17",
     "worker-loader": "^3.0.8"
   }
 }

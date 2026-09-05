@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -17,6 +18,7 @@ import { Save, Trash2, Library } from 'lucide-react';
 interface SignatureCanvasProps {
   onSignatureChange: (dataUrl: string) => void;
   onPlaceSignature?: () => void;
+  onSignatureLoadedFromLibrary?: () => void;
   isPlacingSignature?: boolean;
   pdfFile?: File | null;
   isLoading?: boolean;
@@ -32,6 +34,7 @@ interface SavedSignature {
 export function SignatureCanvasComponent({
   onSignatureChange,
   onPlaceSignature,
+  onSignatureLoadedFromLibrary,
   isPlacingSignature = false,
   pdfFile = null,
   isLoading = false
@@ -88,13 +91,13 @@ export function SignatureCanvasComponent({
         await loadSavedSignatures();
         setSignatureName('');
         setSaveDialogOpen(false);
-        alert('Firma guardada exitosamente');
+        toast.success('¡Firma guardada exitosamente! ✅');
       } else {
         throw new Error('Error saving signature');
       }
     } catch (error) {
       console.error('Error saving signature:', error);
-      alert('Error al guardar la firma');
+      toast.error('Error al guardar la firma');
     } finally {
       setIsSaving(false);
     }
@@ -105,7 +108,8 @@ export function SignatureCanvasComponent({
     setSignature(savedSignature.imageData);
     onSignatureChange(savedSignature.imageData);
     setLibraryDialogOpen(false);
-  }, [onSignatureChange]);
+    onSignatureLoadedFromLibrary?.();
+  }, [onSignatureChange, onSignatureLoadedFromLibrary]);
 
   // Delete a signature from library
   const deleteFromLibrary = useCallback(async (id: string) => {
@@ -296,12 +300,12 @@ export function SignatureCanvasComponent({
               </Button>
             </div>
 
-            {/* Place signature button - Only visible on mobile */}
+            {/* Place signature button */}
             {onPlaceSignature && (
               <Button
                 type="button"
                 onClick={onPlaceSignature}
-                className="w-full lg:hidden"
+                className="w-full"
                 variant={isPlacingSignature ? "default" : "outline"}
                 disabled={!pdfFile || !signature || isLoading}
               >

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { getProfileByStripeCustomerId, updateProfile } from '@/lib/db/queries';
+import { getProfileByStripeCustomerId, updateProfile, addCredits } from '@/lib/db/queries';
 
 export async function POST(req: NextRequest) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -36,53 +36,70 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed':
         {
-          const session = event.data.object as Stripe.Checkout.Session;
-          const userId = session.metadata?.userId;
+          try {
+            const session = event.data.object as Stripe.Checkout.Session;
+            const userId = session.metadata?.userId;
+            const creditAmount = parseInt(session.metadata?.creditAmount || '0');
 
-          if (userId && session.customer) {
-            // Update profile's plan to PREMIUM and save customer ID
-            await updateProfile(userId, {
-              plan: 'PREMIUM',
-              stripeCustomerId: session.customer as string
-            });
+            console.log('=== CHECKOUT SESSION COMPLETED ===');
+            console.log('Session ID:', session.id);
+            console.log('User ID:', userId);
+            console.log('Customer ID:', session.customer);
+            console.log('Credits (parsed):', creditAmount);
+            console.log('Credits (raw metadata):', session.metadata?.creditAmount);
+            console.log('Full metadata:', session.metadata);
+            console.log('Payment intent:', session.payment_intent);
+
+            if (!userId) {
+              console.error('❌ ERROR: userId missing from metadata');
+              return;
+            }
+
+            if (creditAmount === 0 || isNaN(creditAmount)) {
+              console.error('❌ ERROR: creditAmount is 0 or NaN. Raw value:', session.metadata?.creditAmount);
+              return;
+            }
+
+            if (!session.customer) {
+              console.error('❌ ERROR: session.customer is missing');
+              return;
+            }
+
+            try {
+              // Update profile with customer ID
+              await updateProfile(userId, {
+                stripeCustomerId: session.customer as string
+              });
+              console.log('✅ Profile updated with Stripe customer ID');
+            } catch (profileError) {
+              console.error('❌ ERROR updating profile:', profileError);
+              throw profileError;
+            }
+
+            try {
+              // Add credits to user
+              await addCredits(userId, creditAmount, `Compra de ${creditAmount} créditos`, session.payment_intent as string);
+              console.log('✅ Credits added successfully');
+            } catch (creditsError) {
+              console.error('❌ ERROR adding credits:', creditsError);
+              throw creditsError;
+            }
+          } catch (sessionError) {
+            console.error('❌ ERROR processing checkout session:', sessionError);
+            throw sessionError;
           }
         }
         break;
 
+      // NOTA: Los eventos de suscripción se ignoran ahora
+      // El nuevo sistema usa SOLO créditos, no planes de suscripción
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        {
-          const subscription = event.data.object as Stripe.Subscription;
-          const customerId = subscription.customer as string;
-
-          // Find profile by stripeCustomerId
-          const profile = await getProfileByStripeCustomerId(customerId);
-
-          if (profile) {
-            // Determine if the subscription is active
-            const isActive = subscription.status === 'active' || subscription.status === 'trialing';
-
-            // Update profile's plan based on subscription status
-            await updateProfile(profile.id, {
-              plan: isActive ? 'PREMIUM' : 'FREE'
-            });
-          }
-        }
-        break;
-
       case 'customer.subscription.deleted':
       case 'customer.subscription.paused':
         {
-          const subscription = event.data.object as Stripe.Subscription;
-          const customerId = subscription.customer as string;
-
-          // Find profile by stripeCustomerId
-          const profile = await getProfileByStripeCustomerId(customerId);
-
-          if (profile) {
-            // Downgrade profile to FREE plan
-            await updateProfile(profile.id, { plan: 'FREE' });
-          }
+          console.log(`⚠️ Ignoring subscription event: ${event.type}`);
+          console.log('Sistema nuevo basado en créditos, no en suscripciones');
         }
         break;
 

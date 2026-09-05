@@ -4,10 +4,27 @@ import Link from "next/link";
 import Image from "next/image";
 import { FileSignature, CheckCircle2, Zap, Shield, Sparkles, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCreditPackages } from "@/lib/db/queries";
+import { Footer } from "@/components/footer";
+
+interface CreditPackage {
+  id: string;
+  name: string;
+  price: string;
+  creditAmount: number;
+  description?: string;
+}
 
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  let packages: CreditPackage[] = [];
+  try {
+    packages = (await getCreditPackages()) as CreditPackage[];
+  } catch (error) {
+    console.error('Error fetching packages:', error);
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
@@ -17,11 +34,11 @@ export default async function Home() {
           <div className="flex items-center gap-2">
             <Link href="/">
               <Image
-                src="/logo1.png"
+                src="/logo.webp"
                 alt="SignPDF Logo"
                 width={240}
                 height={80}
-                className="h-25 w-auto transition-transform hover:scale-105 duration-300"
+                className="h-28 w-auto transition-transform hover:scale-105 duration-300"
                 unoptimized
               />
             </Link>
@@ -57,7 +74,7 @@ export default async function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
+      <section className="container mx-auto px-4 pt-8 pb-8 text-center">
         <div className="mx-auto max-w-4xl">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 border border-blue-200/50 mb-8 animate-fade-in">
             <Sparkles className="h-4 w-4 text-blue-600 animate-pulse" />
@@ -69,7 +86,12 @@ export default async function Home() {
               Firma tus PDFs de manera
             </span>
             <br />
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent animate-gradient-x">
+            <span
+              className="bg-clip-text text-transparent animate-gradient-x"
+              style={{
+                backgroundImage: 'linear-gradient(to right, rgb(37, 99, 235), rgb(102, 51, 153), rgb(226, 32, 116))'
+              }}
+            >
               rápida y segura
             </span>
           </h1>
@@ -122,21 +144,27 @@ export default async function Home() {
             )}
           </div>
 
-          <div
-            className="mt-16 flex flex-wrap items-center justify-center gap-8 text-sm text-gray-600 animate-fade-in"
-            style={{ animationDelay: "0.3s" }}
-          >
-            <div className="flex items-center gap-2">
+          <div className="mt-16 flex flex-wrap items-center justify-center gap-8 text-sm text-gray-600">
+            <div
+              className="flex items-center gap-2 animate-fade-in"
+              style={{ animationDelay: "0.4s" }}
+            >
               <CheckCircle2 className="h-5 w-5 text-green-600" />
-              <span>100% Seguro</span>
+              <span>No guardamos documentos</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-2 animate-fade-in"
+              style={{ animationDelay: "0.6s" }}
+            >
               <CheckCircle2 className="h-5 w-5 text-green-600" />
-              <span>Sin instalación</span>
+              <span>1 Firma gratis por semana</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-2 animate-fade-in"
+              style={{ animationDelay: "0.8s" }}
+            >
               <CheckCircle2 className="h-5 w-5 text-green-600" />
-              <span>Gratis para empezar</span>
+              <span>Sin pruebas engorrosas</span>
             </div>
           </div>
         </div>
@@ -152,60 +180,52 @@ export default async function Home() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:bg-white">
-            <CardHeader>
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-blue-500/30">
-                <FileSignature className="h-7 w-7 text-white" />
-              </div>
-              <CardTitle className="text-xl">Firma Digital</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:bg-white flex flex-row items-start gap-4 p-6 md:block md:p-0">
+            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-blue-500/30 md:mx-6 md:mt-6 md:mb-4">
+              <FileSignature className="h-7 w-7 text-white" />
+            </div>
+            <div className="md:px-6 md:pb-6">
+              <CardTitle className="text-xl mb-1.5 md:mb-1.5">Firma Digital</CardTitle>
               <p className="text-gray-600 leading-relaxed">
                 Crea tu firma con el mouse o pantalla táctil y colócala donde quieras en el PDF.
               </p>
-            </CardContent>
+            </div>
           </Card>
 
-          <Card className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:bg-white">
-            <CardHeader>
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-amber-500/30">
-                <Zap className="h-7 w-7 text-white" />
-              </div>
-              <CardTitle className="text-xl">Súper Rápido</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:bg-white flex flex-row items-start gap-4 p-6 md:block md:p-0">
+            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-amber-500/30 md:mx-6 md:mt-6 md:mb-4">
+              <Zap className="h-7 w-7 text-white" />
+            </div>
+            <div className="md:px-6 md:pb-6">
+              <CardTitle className="text-xl mb-1.5 md:mb-1.5">Súper Rápido</CardTitle>
               <p className="text-gray-600 leading-relaxed">
                 Todo el procesamiento se hace en tu navegador. Sin subidas lentas a servidores.
               </p>
-            </CardContent>
+            </div>
           </Card>
 
-          <Card className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:bg-white">
-            <CardHeader>
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-emerald-500/30">
-                <Shield className="h-7 w-7 text-white" />
-              </div>
-              <CardTitle className="text-xl">100% Seguro</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:bg-white flex flex-row items-start gap-4 p-6 md:block md:p-0">
+            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-emerald-500/30 md:mx-6 md:mt-6 md:mb-4">
+              <Shield className="h-7 w-7 text-white" />
+            </div>
+            <div className="md:px-6 md:pb-6">
+              <CardTitle className="text-xl mb-1.5 md:mb-1.5">100% Seguro</CardTitle>
               <p className="text-gray-600 leading-relaxed">
                 Tus documentos nunca salen de tu navegador. Total privacidad garantizada.
               </p>
-            </CardContent>
+            </div>
           </Card>
 
-          <Card className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:bg-white">
-            <CardHeader>
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-indigo-500/30">
-                <CheckCircle2 className="h-7 w-7 text-white" />
-              </div>
-              <CardTitle className="text-xl">Fácil de Usar</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="group border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:bg-white flex flex-row items-start gap-4 p-6 md:block md:p-0">
+            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg shadow-indigo-500/30 md:mx-6 md:mt-6 md:mb-4">
+              <CheckCircle2 className="h-7 w-7 text-white" />
+            </div>
+            <div className="md:px-6 md:pb-6">
+              <CardTitle className="text-xl mb-1.5 md:mb-1.5">Fácil de Usar</CardTitle>
               <p className="text-gray-600 leading-relaxed">
                 Interfaz intuitiva en 3 pasos: carga, firma y descarga. Así de simple.
               </p>
-            </CardContent>
+            </div>
           </Card>
         </div>
       </section>
@@ -216,98 +236,105 @@ export default async function Home() {
           <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text text-transparent text-balance">
             Planes sencillos y transparentes
           </h2>
-          <p className="mt-4 text-lg md:text-xl text-gray-600">Elige el plan que mejor se adapte a tus necesidades</p>
+          <p className="mt-4 text-lg md:text-xl text-gray-600">Elige el paquete que mejor se adapte a tus necesidades</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 max-w-5xl mx-auto">
-          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-            <CardHeader className="space-y-4">
-              <CardTitle className="text-3xl">Plan Free</CardTitle>
-              <CardDescription className="space-y-1">
-                <div className="text-5xl font-bold text-gray-900">$0</div>
-                <div className="text-base text-gray-600">por mes</div>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  </div>
-                  <span className="text-gray-700">1 firma por semana</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  </div>
-                  <span className="text-gray-700">Procesamiento en el navegador</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  </div>
-                  <span className="text-gray-700">100% seguro y privado</span>
-                </li>
-              </ul>
-              <Button className="w-full bg-transparent" variant="outline" asChild size="lg">
-                <Link href={user ? "/sign" : "/sign-up"}>Comenzar Gratis</Link>
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3 max-w-6xl mx-auto">
+          {packages.map((pkg) => {
+            const isPopular = pkg.name === 'Bolsa Popular';
+            const index = packages.indexOf(pkg);
 
-          <Card className="relative border-0 bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-2xl shadow-blue-500/30 hover:shadow-3xl hover:shadow-blue-500/40 transition-all duration-500 hover:-translate-y-2 overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-
-            <CardHeader className="space-y-4 relative z-10">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle className="text-3xl text-white">Plan Premium</CardTitle>
-                <span className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1 whitespace-nowrap">
-                  <Sparkles className="h-3 w-3" />
-                  Popular
-                </span>
-              </div>
-              <CardDescription className="space-y-1">
-                <div className="text-5xl font-bold text-white">$5</div>
-                <div className="text-base text-blue-100">por mes</div>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 relative z-10">
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="font-semibold text-white">50 firmas por mes</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-blue-50">Procesamiento en el navegador</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-blue-50">100% seguro y privado</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-blue-50">Soporte prioritario</span>
-                </li>
-              </ul>
-              <Button
-                className="w-full bg-white text-blue-600 hover:bg-blue-50 hover:shadow-lg transition-all duration-300"
-                asChild
-                size="lg"
+            return (
+              <Card
+                key={pkg.id}
+                className={`relative flex flex-col border-0 ${isPopular
+                  ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-2xl shadow-blue-500/30 hover:shadow-3xl hover:shadow-blue-500/40'
+                  : 'bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl'
+                  } transition-all duration-500 hover:-translate-y-2 overflow-hidden`}
               >
-                <Link href={user ? "/upgrade" : "/sign-up"}>Mejorar a Premium</Link>
-              </Button>
-            </CardContent>
-          </Card>
+                {isPopular && (
+                  <>
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+                  </>
+                )}
+
+                <CardHeader className={`space-y-4 ${isPopular ? 'relative z-10' : ''}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <CardTitle className={`text-3xl ${isPopular ? 'text-white' : ''}`}>{pkg.name}</CardTitle>
+                    {isPopular && (
+                      <span className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1 whitespace-nowrap">
+                        <Sparkles className="h-3 w-3" />
+                        Popular
+                      </span>
+                    )}
+                  </div>
+                  <CardDescription className={`space-y-1 ${isPopular ? 'text-blue-100' : ''}`}>
+                    <div className={`text-5xl font-bold ${isPopular ? 'text-white' : 'text-gray-900'}`}>
+                      ${pkg.price}
+                      <span className={`text-xl ${isPopular ? 'text-white' : 'text-gray-600'} ml-2`}>MXN</span>
+                    </div>
+                    <div className={`text-base ${isPopular ? 'text-blue-100' : 'text-gray-600'}`}>
+                      Compra única, sin suscripción
+                    </div>
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className={`space-y-6 flex-1 ${isPopular ? 'relative z-10' : ''}`}>
+                  <div>
+                    <p className={`text-lg font-semibold ${isPopular ? 'text-blue-50' : 'text-gray-700'}`}>
+                      {pkg.creditAmount} Firmas
+                    </p>
+                    <p className={`text-sm ${isPopular ? 'text-blue-100' : 'text-gray-600'}`}>
+                      ${(parseFloat(pkg.price) / pkg.creditAmount).toFixed(2)} por firma
+                    </p>
+                  </div>
+                  <ul className="space-y-4">
+                    <li className="flex items-start gap-3">
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${isPopular
+                        ? 'bg-white/20 backdrop-blur-sm'
+                        : 'bg-amber-100'
+                        }`}>
+                        <CheckCircle2 className={`h-4 w-4 ${isPopular ? 'text-white' : 'text-amber-600'}`} />
+                      </div>
+                      <span className={isPopular ? 'text-blue-50' : 'text-gray-700'}>Créditos que nunca vencen</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${isPopular
+                        ? 'bg-white/20 backdrop-blur-sm'
+                        : 'bg-amber-100'
+                        }`}>
+                        <CheckCircle2 className={`h-4 w-4 ${isPopular ? 'text-white' : 'text-amber-600'}`} />
+                      </div>
+                      <span className={isPopular ? 'text-blue-50' : 'text-gray-700'}>Sin suscripción</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${isPopular
+                        ? 'bg-white/20 backdrop-blur-sm'
+                        : 'bg-amber-100'
+                        }`}>
+                        <CheckCircle2 className={`h-4 w-4 ${isPopular ? 'text-white' : 'text-amber-600'}`} />
+                      </div>
+                      <span className={isPopular ? 'text-blue-50' : 'text-gray-700'}>Cancela cuando quieras</span>
+                    </li>
+                  </ul>
+                </CardContent>
+
+                <CardContent className={isPopular ? 'relative z-10' : ''}>
+                  <Button
+                    className={`w-full transition-all duration-300 ${isPopular
+                      ? 'bg-white text-blue-600 hover:bg-blue-50 hover:shadow-lg'
+                      : 'bg-amber-600 hover:bg-amber-700 text-white'
+                      }`}
+                    asChild
+                    size="lg"
+                  >
+                    <Link href={user ? '/shop' : '/sign-up'}>Comprar Ahora</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </section>
 
@@ -338,12 +365,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-200 bg-white/80 backdrop-blur-sm py-12">
-        <div className="container mx-auto px-4 text-center text-gray-600">
-          <p className="text-sm">&copy; 2026 SignPDF. Todos los derechos reservados.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

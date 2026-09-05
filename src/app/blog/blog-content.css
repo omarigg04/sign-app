@@ -1,0 +1,137 @@
+.blog-content h1 {
+  font-size: 2.25rem;
+  font-weight: bold;
+  margin-top: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.blog-content h2 {
+  font-size: 1.875rem;
+  font-weight: bold;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.blog-content h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.blog-content h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #2563eb;
+}
+
+.blog-content p {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.blog-content ul {
+  list-style-type: disc;
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.blog-content ol {
+  list-style-type: decimal;
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.blog-content li {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.blog-content table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #d1d5db;
+  margin: 1.5rem 0;
+}
+
+.blog-content thead {
+  background-color: #f3f4f6;
+}
+
+.blog-content th {
+  border: 1px solid #d1d5db;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.blog-content td {
+  border: 1px solid #d1d5db;
+  padding: 0.75rem 1rem;
+}
+
+.blog-content tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.blog-content code {
+  background-color: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-family: 'Monaco', 'Courier New', monospace;
+  color: #dc2626;
+}
+
+.blog-content pre {
+  background-color: #111827;
+  color: #f3f4f6;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.blog-content pre code {
+  background-color: transparent;
+  padding: 0;
+  color: #f3f4f6;
+}
+
+.blog-content blockquote {
+  border-left: 4px solid #3b82f6;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #4b5563;
+  margin: 1rem 0;
+}
+
+.blog-content strong {
+  font-weight: 600;
+}
+
+.blog-content em {
+  font-style: italic;
+}
+
+.blog-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.blog-content a:hover {
+  color: #1d4ed8;
+}
+
+.blog-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1.5rem 0;
+}

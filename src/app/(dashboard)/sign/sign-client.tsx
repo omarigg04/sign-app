@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import Image from 'next/image';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { SignatureCanvasComponent } from '@/components/signature/signature-canvas';
 import { DraggableSignature } from '@/components/signature/draggable-signature';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,7 @@ export function SignPageClient() {
   const [isPlacingSignature, setIsPlacingSignature] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [limitInfo, setLimitInfo] = useState<{ canSign: boolean; remaining: number; plan: string } | null>(null);
+  const [limitInfo, setLimitInfo] = useState<{ canSign: boolean; remaining: number } | null>(null);
   const [pdfScale, setPdfScale] = useState(1); // Zoom level for PDF viewer
   const [mobileTab, setMobileTab] = useState<'prepare' | 'preview'>('prepare'); // Tab state for mobile
 
@@ -46,16 +47,14 @@ export function SignPageClient() {
         const limitData = await checkSignatureLimit();
         setLimitInfo({
           canSign: limitData.canSign,
-          remaining: limitData.remaining,
-          plan: limitData.plan
+          remaining: limitData.remaining
         });
       } catch (error) {
         console.error('Error loading limit info:', error);
         // Set default values if limit check fails
         setLimitInfo({
           canSign: true,
-          remaining: 1,
-          plan: 'FREE'
+          remaining: 1
         });
       }
     };
@@ -98,6 +97,14 @@ export function SignPageClient() {
 
   const handleSignatureChange = (dataUrl: string) => {
     setSignatureImage(dataUrl);
+  };
+
+  const handleSignatureLoadedFromLibrary = () => {
+    if (!pdfFile) {
+      toast.error('Por favor carga un documento PDF primero.');
+      return;
+    }
+    setIsPlacingSignature(true);
   };
 
   const handleSignaturePositionChange = (position: { x: number; y: number }) => {
@@ -157,22 +164,22 @@ export function SignPageClient() {
       return;
     }
 
-    // Try to check signature limit (optional - won't block export if it fails)
+    // Check if user has sufficient credits
     try {
       const limitData = await checkSignatureLimit();
       setLimitInfo({
         canSign: limitData.canSign,
-        remaining: limitData.remaining,
-        plan: limitData.plan
+        remaining: limitData.remaining
       });
 
       if (!limitData.canSign) {
-        const proceed = confirm(`Has alcanzado tu límite de firmas (${limitData.maxSignatures} por ${limitData.period}). ¿Deseas continuar de todas formas?`);
-        if (!proceed) return;
+        alert('No tienes créditos disponibles. Por favor compra más firmas.');
+        return;
       }
     } catch (error) {
-      console.warn('Could not check signature limit (continuing anyway):', error);
-      // Continue with export even if limit check fails
+      console.warn('Could not check credits:', error);
+      alert('Error verificando tus créditos. Por favor intenta de nuevo.');
+      return;
     }
 
     // On mobile, switch to preview tab so the PDF canvas is rendered and we can get accurate measurements
@@ -315,19 +322,25 @@ export function SignPageClient() {
 
       setProgress(100);
 
-      // Try to register the signature (optional - won't affect the export)
+      // Register the signature and deduct credits
       try {
         await registerSignature(pdfFile.name);
+        toast.success('¡Firma registrada exitosamente! 🎉');
         // Update the displayed limit info after successful registration
         const updatedLimitData = await checkSignatureLimit();
         setLimitInfo({
           canSign: updatedLimitData.canSign,
-          remaining: updatedLimitData.remaining,
-          plan: updatedLimitData.plan
+          remaining: updatedLimitData.remaining
         });
-      } catch (registrationError) {
-        console.warn('Could not register signature in database:', registrationError);
-        // Export still succeeded - just couldn't track it in DB
+      } catch (registrationError: any) {
+        console.error('Error registering signature:', registrationError);
+        // Check if it was a 402 (insufficient credits) error
+        if (registrationError.message?.includes('Insufficient credits')) {
+          toast.error('No hay suficientes créditos para esta firma. Por favor compra más.');
+        } else {
+          toast.error('Error al registrar la firma en la base de datos.');
+          console.warn('Could not register signature in database:', registrationError);
+        }
       }
 
       // Reset loading after a short delay
@@ -337,7 +350,7 @@ export function SignPageClient() {
       }, 1000);
     } catch (error) {
       console.error('Error signing PDF:', error);
-      alert('Error al firmar el PDF: ' + (error as Error).message);
+      toast.error('Error al firmar el PDF: ' + (error as Error).message);
       setIsLoading(false);
       setProgress(0);
     }
@@ -379,26 +392,20 @@ export function SignPageClient() {
               alt="Logo"
               width={150}
               height={50}
-              className="h-12 w-auto cursor-pointer hover:scale-105 transition-transform duration-300"
+              className="h-24 w-auto cursor-pointer hover:scale-105 transition-transform duration-300"
               unoptimized
             />
           </Link>
 
-          {/* Plan Badge */}
+          {/* Credits Badge */}
           {limitInfo && (
             <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50 animate-fade-in">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-gray-700">Plan:</span>
+                <span className="text-sm font-semibold text-gray-700">Créditos disponibles:</span>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
                   <Sparkles className="h-3.5 w-3.5 text-white animate-pulse" />
-                  <span className="text-sm font-bold text-white">{limitInfo.plan}</span>
+                  <span className="text-sm font-bold text-white">{limitInfo.remaining}</span>
                 </div>
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-sm text-gray-600">Firmas restantes:</span>
-                <span className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                  {limitInfo.remaining}
-                </span>
               </div>
             </div>
           )}
@@ -457,6 +464,7 @@ export function SignPageClient() {
           <SignatureCanvasComponent
             onSignatureChange={handleSignatureChange}
             onPlaceSignature={handlePlaceSignature}
+            onSignatureLoadedFromLibrary={handleSignatureLoadedFromLibrary}
             isPlacingSignature={isPlacingSignature}
             pdfFile={pdfFile}
             isLoading={isLoading}

@@ -3,10 +3,7 @@
 interface LimitCheckResponse {
   canSign: boolean;
   remaining: number;
-  signaturesCount: number;
-  maxSignatures: number;
-  plan: 'FREE' | 'PREMIUM';
-  period: 'week' | 'month';
+  system: 'credits';
 }
 
 interface RegisterSignatureResponse {
@@ -64,6 +61,10 @@ export async function registerSignature(fileName: string): Promise<RegisterSigna
     if (!response.ok) {
       if (response.status === 401) {
         throw new Error('User not authenticated');
+      }
+
+      if (response.status === 402) {
+        throw new Error('Insufficient credits. Please purchase more signatures.');
       }
 
       // Check if response is JSON

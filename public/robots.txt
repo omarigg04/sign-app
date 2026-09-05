@@ -1,0 +1,25 @@
+# Allow all search engines
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /shop
+Disallow: /sign
+Crawl-delay: 1
+
+# Specific rules for Google
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Crawl-delay: 0
+
+# Specific rules for Bing
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Crawl-delay: 1
+
+# Sitemap
+Sitemap: https://tufirma.app/sitemap.xml

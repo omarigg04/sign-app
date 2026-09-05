@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getProfileById, countSignatures, createProfile } from '@/lib/db/queries';
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { getProfileById, createProfile, getOrCreateUserCredits, regenerateFreeSignature } from '@/lib/db/queries';
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,40 +18,29 @@ export async function GET(req: NextRequest) {
       profile = await createProfile(user.id);
     }
 
-    const { plan } = profile;
+    // Get or create user's credit balance (creates with 1 free signature if new)
+    let userCredits = await getOrCreateUserCredits(user.id);
+    let remaining = userCredits.balance;
 
-    // Get current week and month
-    const now = new Date();
-    const startOfCurrentWeek = startOfWeek(now, { weekStartsOn: 1 }); // Monday as start of week
-    const endOfCurrentWeek = endOfWeek(now, { weekStartsOn: 1 });
-    const startOfCurrentMonth = startOfMonth(now);
-    const endOfCurrentMonth = endOfMonth(now);
-
-    // Count signatures in the current period based on the user's plan
-    let signaturesCount = 0;
-    let maxSignatures = plan === 'PREMIUM' ? 50 : 1;
-
-    if (plan === 'FREE') {
-      // FREE plan: 1 signature per week
-      signaturesCount = await countSignatures(user.id, startOfCurrentWeek, endOfCurrentWeek);
-    } else if (plan === 'PREMIUM') {
-      // PREMIUM plan: 50 signatures per month
-      signaturesCount = await countSignatures(user.id, startOfCurrentMonth, endOfCurrentMonth);
+    // Try to regenerate free signature if needed
+    if (remaining === 0) {
+      const regenerated = await regenerateFreeSignature(user.id);
+      if (regenerated) {
+        // Refresh the balance after regeneration
+        userCredits = await getOrCreateUserCredits(user.id);
+        remaining = userCredits.balance;
+      }
     }
 
-    const canSign = signaturesCount < maxSignatures;
-    const remaining = maxSignatures - signaturesCount;
+    const canSign = remaining > 0;
 
     return NextResponse.json({
       canSign,
       remaining,
-      signaturesCount,
-      maxSignatures,
-      plan,
-      period: plan === 'FREE' ? 'week' : 'month',
+      system: 'credits',
     }, { status: 200 });
   } catch (error) {
-    console.error('Error checking signature limit:', error);
+    console.error('Error checking credits:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

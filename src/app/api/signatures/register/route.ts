@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getProfileById, countSignatures, createSignature, createProfile } from '@/lib/db/queries';
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { getProfileById, createSignature, createProfile, getUserCredits, useCredits } from '@/lib/db/queries';
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,35 +26,18 @@ export async function POST(req: NextRequest) {
       profile = await createProfile(user.id);
     }
 
-    const { plan } = profile;
+    // Check user's credit balance
+    const userCredits = await getUserCredits(user.id);
 
-    // Get current week and month for calculating periods
-    const now = new Date();
-    const startOfCurrentWeek = startOfWeek(now, { weekStartsOn: 1 });
-    const endOfCurrentWeek = endOfWeek(now, { weekStartsOn: 1 });
-    const startOfCurrentMonth = startOfMonth(now);
-    const endOfCurrentMonth = endOfMonth(now);
-
-    // Count signatures in the current period based on the user's plan
-    let signaturesCount = 0;
-    let maxSignatures = plan === 'PREMIUM' ? 50 : 1;
-
-    if (plan === 'FREE') {
-      // FREE plan: check signatures this week
-      signaturesCount = await countSignatures(user.id, startOfCurrentWeek, endOfCurrentWeek);
-    } else if (plan === 'PREMIUM') {
-      // PREMIUM plan: check signatures this month
-      signaturesCount = await countSignatures(user.id, startOfCurrentMonth, endOfCurrentMonth);
-    }
-
-    // Check if user has exceeded their limit
-    if (signaturesCount >= maxSignatures) {
+    if (!userCredits || userCredits.balance < 1) {
       return NextResponse.json({
-        error: `Signature limit exceeded. Plan: ${plan}. Max signatures: ${maxSignatures} per ${plan === 'FREE' ? 'week' : 'month'}.`
-      }, { status: 403 });
+        error: 'Insufficient credits. Please purchase more signatures.',
+        remaining: userCredits?.balance || 0
+      }, { status: 402 });
     }
 
-    // Register the new signature
+    // Register the new signature first
+    const now = new Date();
     const weekNumber = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(getWeekNumber(now)).padStart(2, '0')}`;
     const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
@@ -66,14 +48,28 @@ export async function POST(req: NextRequest) {
       monthYear,
     });
 
+    // Then deduct 1 credit from user with the signature ID
+    const transaction = await useCredits(user.id, 1, newSignature.id);
+
     return NextResponse.json({
       success: true,
       signature: newSignature,
       message: 'Signature registered successfully',
     }, { status: 200 });
   } catch (error) {
-    console.error('Error registering signature:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+
+    console.error('Error registering signature:', {
+      message: errorMessage,
+      stack: errorStack,
+      error: error
+    });
+
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: errorMessage
+    }, { status: 500 });
   }
 }
 

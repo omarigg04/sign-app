@@ -44,3 +44,11 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+.md
+/docs-md
+
+#tests
+/test-results
+/playwright-report
+# stray secrets that shouldn't live in the repo
+apikey-ml-dash.txt
